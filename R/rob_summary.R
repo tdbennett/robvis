@@ -552,7 +552,7 @@ rob_summary <-
 
     # Generic=================================================================
 
-    if (tool %in% c("Generic", "ROB1", "QUIPS")) {
+    if (tool %in% c("Generic", "ROB1")) {
 
       if (tool == "ROB1") {
         message(
@@ -673,6 +673,120 @@ rob_summary <-
         )
     }
 
+
+    # QUIPS =================================================================
+
+    if (tool == "QUIPS") {
+
+
+      # Data preprocessing
+      for (i in 2:(ncol(data) - 1)) {
+        data[[i]] <- tolower(data[[i]])
+        data[[i]] <- trimws(data[[i]])
+        data[[i]] <- substr(data[[i]], 0, 1)
+        #data[[i]] <- gsub("u", "s", data[[i]])
+        data[[i]] <- gsub("m", "s", data[[i]])
+      }
+
+      # Define weights if FALSE and check if there is a weight
+      # column if TRUE
+      if (weighted == FALSE) {
+        data[, ncol(data)] <- rep(1, length(nrow(data)))
+      } else {
+        if (is.numeric(data[2, ncol(data)]) == FALSE) {
+          stop(
+            "Error. The final column does not seem to contain numeric values (expected for weights)."
+          )
+        }
+      }
+
+      # Clean and rename column headings. as needed
+      data.tmp <- data
+      for (i in 2:(ncol(data) - 1)) {
+        names(data.tmp)[i] <- invisible(gsub(".", " ",
+                                             names(data.tmp)[i], fixed = TRUE))
+      }
+      names(data.tmp)[ncol(data.tmp)] <- "Weights"
+
+
+
+      # Define dataframe based on value of 'overall'
+
+
+      if (overall == "FALSE") {
+        data.tmp <- data.tmp[, c(2:(ncol(data.tmp) - 2),
+                                 ncol(data.tmp))]
+      } else {
+        data.tmp <- data.tmp[, c(2:ncol(data.tmp))]
+      }
+
+      # Gather data, convert to factors and set levels
+      rob.tidy <- suppressWarnings(tidyr::gather(data.tmp,
+                                                 domain, judgement, -Weights))
+
+      rob.tidy$judgement <-
+        factor(rob.tidy$judgement, levels = c("n",
+                                              "h",
+                                              "s",
+                                              "l"))
+
+      for (i in 1:(ncol(data.tmp) - 1)) {
+        levels(rob.tidy$domain)[i] <- colnames(data.tmp)[i]
+      }
+
+      rob.tidy$domain <-
+        factor(rob.tidy$domain, levels = rev(levels(rob.tidy$domain)))
+
+      # Create plot
+      plot <-
+        ggplot2::ggplot(data = rob.tidy) +
+        ggplot2::geom_bar(
+          mapping = ggplot2::aes(
+            x = domain,
+            fill = judgement,
+            weight = Weights
+          ),
+          width = 0.7,
+          position = "fill",
+          color = "black"
+        ) +
+        ggplot2::coord_flip(ylim = c(0,
+                                     1)) +
+        ggplot2::guides(fill = ggplot2::guide_legend(reverse = TRUE)) +
+        ggplot2::scale_fill_manual(
+          "Risk of Bias",
+          values = c(l = low_colour,
+                     s = concerns_colour,
+                     h = high_colour,
+                     n= ni_colour),
+          labels = c(n= "Not Applicable",
+                     h = "  High risk of bias  ",
+                     s = "  Moderate risk of bias      ",
+                     l = "  Low risk of bias   ")
+        ) +
+        ggplot2::scale_y_continuous(labels = scales::percent) +
+        ggplot2::theme(
+          axis.title.x = ggplot2::element_blank(),
+          axis.title.y = ggplot2::element_blank(),
+          axis.ticks.y = ggplot2::element_blank(),
+          axis.text.y = ggplot2::element_text(size = 10,
+                                              color = "black"),
+          axis.line.x = ggplot2::element_line(
+            colour = "black",
+            size = 0.5,
+            linetype = "solid"
+          ),
+          legend.position = "bottom",
+          panel.grid.major = ggplot2::element_blank(),
+          panel.grid.minor = ggplot2::element_blank(),
+          panel.background = ggplot2::element_blank(),
+          legend.background = ggplot2::element_rect(linetype = "solid",
+                                                    colour = "black"),
+          legend.title = ggplot2::element_blank(),
+          legend.key.size = ggplot2::unit(0.75, "cm"),
+          legend.text = ggplot2::element_text(size = 6)
+        )
+    }
 
 
     # Return-plot===================================================================
